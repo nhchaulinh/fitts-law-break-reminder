@@ -1,0 +1,1779 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Fitts' Law: Break-Reminder Selection</title>
+  <style>
+    :root {
+      --bg: #eef2f5;
+      --surface: #ffffff;
+      --soft: #f7f9fb;
+      --ink: #18212b;
+      --muted: #66717d;
+      --line: #cfd6dd;
+      --accent: #2f6fed;
+      --accent-dark: #1f56c5;
+      --danger: #9b2f2f;
+      --stage-width: 1000px;
+      --stage-height: 420px;
+      --target-height: 48px;
+    }
+
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.5;
+    }
+    body { min-width: 320px; }
+    button, input, textarea { font: inherit; }
+
+    .page {
+      width: min(1180px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 28px 0 64px;
+    }
+
+    header { margin-bottom: 18px; }
+    h1 {
+      margin: 0 0 8px;
+      font-size: clamp(1.8rem, 3vw, 2.5rem);
+      letter-spacing: -0.025em;
+    }
+    h2 { margin: 0 0 10px; font-size: 1.24rem; }
+    h3 { margin: 16px 0 7px; font-size: 1rem; }
+    p { margin: 0 0 10px; }
+    .author-line {
+      margin: -2px 0 10px;
+      color: #4f5b67;
+      font-size: 0.96rem;
+      font-weight: 600;
+    }
+
+    .lede { max-width: 920px; color: var(--muted); }
+
+    .report-grid { display: grid; gap: 16px; margin-bottom: 20px; }
+    .report-section, .experiment-card {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      box-shadow: 0 6px 18px rgba(18, 31, 44, 0.06);
+    }
+    .report-section { padding: 18px 20px; }
+    .experiment-card { padding: 18px; margin-bottom: 20px; }
+
+    .section-intent {
+      margin: 10px 0 0;
+      padding: 10px 12px;
+      border-left: 3px solid var(--accent);
+      background: #f5f8ff;
+      color: #41505f;
+    }
+
+    .design-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 12px;
+    }
+    .design-card {
+      padding: 12px 14px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: var(--soft);
+    }
+    .design-card strong { display: block; margin-bottom: 4px; }
+
+    .combined-design {
+      grid-column: 1 / -1;
+      display: grid;
+      gap: 12px;
+      padding: 14px 18px;
+    }
+
+    .design-item {
+      display: grid;
+      gap: 3px;
+    }
+
+    .design-item strong {
+      margin: 0;
+      line-height: 1.2;
+    }
+
+    .design-item span {
+      display: block;
+      line-height: 1.4;
+    }
+
+    .method-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0;
+      font-size: 0.95rem;
+    }
+    .method-table th, .method-table td {
+      border: 1px solid var(--line);
+      padding: 9px 10px;
+      text-align: left;
+      vertical-align: top;
+    }
+    .method-table th { background: #f4f6f8; }
+
+    .formula-box {
+      padding: 20px;
+      border: 1px dashed #9ca6b0;
+      border-radius: 10px;
+      background: #fafbfc;
+    }
+    .formula-main {
+      margin: 6px 0 20px;
+      text-align: center;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: clamp(1.55rem, 3vw, 2.15rem);
+      line-height: 1.15;
+    }
+
+    .math-fraction {
+      display: inline-grid;
+      grid-template-rows: auto auto;
+      min-width: 1.25em;
+      margin: 0 0.10em;
+      text-align: center;
+      vertical-align: middle;
+      line-height: 1;
+    }
+
+    .math-fraction .numerator {
+      padding: 0 0.18em 0.10em;
+      border-bottom: 1.5px solid currentColor;
+    }
+
+    .math-fraction .denominator {
+      padding: 0.10em 0.18em 0;
+    }
+
+    .formula-paren {
+      display: inline-block;
+      margin: 0 0.04em;
+    }
+
+    .formula-plus {
+      display: inline-block;
+      margin-left: 0.10em;
+    }
+
+    .formula-legend {
+      display: grid;
+      grid-template-columns: minmax(120px, 150px) 1fr;
+      gap: 9px 18px;
+      max-width: 900px;
+      margin: 0 auto;
+      font-size: 0.96rem;
+      align-items: start;
+    }
+
+    .formula-symbol {
+      font-family: Georgia, "Times New Roman", serif;
+      font-weight: 700;
+      white-space: nowrap;
+      text-align: right;
+      padding-right: 4px;
+    }
+    .formula-tip {
+      margin-top: 14px;
+      padding: 10px 12px;
+      border-left: 3px solid var(--accent);
+      background: #f5f8ff;
+      color: #43505d;
+    }
+
+    .top-grid {
+      display: grid;
+      grid-template-columns: 1.45fr 1fr;
+      gap: 16px;
+      margin-bottom: 14px;
+    }
+    .panel {
+      background: var(--soft);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 13px 14px;
+    }
+    .panel ol { margin: 6px 0 0 20px; padding: 0; }
+    .panel li { margin: 4px 0; }
+
+    .progress { display: grid; gap: 8px; }
+    .progress-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 20px;
+      border-bottom: 1px solid var(--line);
+      padding-bottom: 7px;
+    }
+    .progress-row:last-child { border-bottom: 0; padding-bottom: 0; }
+    .progress-label { color: var(--muted); }
+
+    .toolbar {
+      display: grid;
+      grid-template-columns: max-content max-content max-content max-content max-content minmax(240px, 1fr);
+      align-items: center;
+      gap: 10px;
+      min-height: 42px;
+      margin: 12px 0 14px;
+    }
+
+    .control {
+      min-height: 40px;
+      padding: 8px 14px;
+      white-space: nowrap;
+      border: 1px solid var(--accent);
+      border-radius: 8px;
+      background: var(--accent);
+      color: #fff;
+      cursor: pointer;
+      font-weight: 700;
+    }
+    .control.secondary { background: #fff; color: var(--accent); }
+    .control:disabled { opacity: 0.45; cursor: not-allowed; }
+
+    #statusText {
+      width: 100%;
+      min-width: 0;
+      min-height: 24px;
+      color: var(--muted);
+      font-weight: 650;
+      text-align: right;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    #sizeWarning {
+      display: none;
+      margin: 10px 0 14px;
+      padding: 10px 12px;
+      border: 1px solid #dfb1b1;
+      border-radius: 9px;
+      background: #fff1f1;
+      color: var(--danger);
+      font-weight: 700;
+    }
+    #sizeWarning.visible { display: block; }
+
+    .stage-shell {
+      overflow: hidden;
+      width: 100%;
+      display: flex;
+      justify-content: center;
+    }
+
+    #taskStage {
+      position: relative;
+      width: var(--stage-width);
+      height: var(--stage-height);
+      flex: 0 0 var(--stage-width);
+      overflow: hidden;
+      border: 1px solid #bfc8d1;
+      border-radius: 12px;
+      background: #e9edf1;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: none;
+    }
+
+    .app-bar {
+      position: absolute;
+      inset: 0 0 auto 0;
+      height: 48px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 0 16px;
+      border-bottom: 1px solid #d5dce2;
+      background: #fbfcfd;
+      z-index: 2;
+    }
+    .app-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #a6b0ba;
+    }
+    .doc-name {
+      margin-left: 8px;
+      font-size: 13px;
+      font-weight: 700;
+      color: #54606c;
+    }
+
+    .document {
+      position: absolute;
+      left: 36px;
+      top: 70px;
+      width: 928px;
+      height: 308px;
+      padding: 28px 34px;
+      border: 1px solid #d7dde3;
+      background: #fff;
+      box-shadow: 0 2px 8px rgba(16, 28, 40, 0.06);
+    }
+    .doc-heading {
+      margin-bottom: 18px;
+      font-size: 17px;
+      font-weight: 760;
+      color: #2a343e;
+    }
+    .fake-line {
+      height: 8px;
+      margin: 11px 0;
+      border-radius: 4px;
+      background: #e7ebef;
+    }
+    .w92 { width: 92%; }
+    .w84 { width: 84%; }
+    .w76 { width: 76%; }
+    .w68 { width: 68%; }
+    .w57 { width: 57%; }
+    .doc-note {
+      margin-top: 22px;
+      width: 55%;
+      height: 44px;
+      border-left: 3px solid #d7dde3;
+      padding-left: 12px;
+    }
+
+    #startTarget {
+      position: absolute;
+      width: 150px;
+      height: 40px;
+      border: 1px solid #c3cbd3;
+      border-radius: 8px;
+      background: #f7f9fb;
+      color: #66717d;
+      cursor: pointer;
+      z-index: 7;
+      font-size: 14px;
+      font-weight: 400;
+      line-height: 1;
+      white-space: nowrap;
+      touch-action: none;
+    }
+
+    #reminderShell {
+      position: absolute;
+      width: 220px;
+      height: 74px;
+      z-index: 6;
+      border: 1px solid #d4dbe2;
+      border-radius: 12px;
+      background: rgba(255,255,255,0.96);
+      box-shadow: 0 8px 20px rgba(18, 31, 44, 0.10);
+      pointer-events: none;
+    }
+
+    #breakTarget {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      height: var(--target-height);
+      transform: translate(-50%, -50%);
+      border: 1px solid var(--accent-dark);
+      border-radius: 8px;
+      background: var(--accent);
+      color: #fff;
+      cursor: pointer;
+      font-weight: 750;
+      touch-action: none;
+      box-shadow: 0 2px 5px rgba(47, 111, 237, 0.20);
+      pointer-events: auto;
+    }
+
+    #startTarget:focus-visible, #breakTarget:focus-visible, .control:focus-visible {
+      outline: 3px solid #9cb8ff;
+      outline-offset: 2px;
+    }
+
+    #inactiveMask {
+      position: absolute;
+      inset: 0;
+      z-index: 30;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      text-align: center;
+      background: rgba(245, 248, 250, 0.86);
+      color: #34404b;
+      font-weight: 760;
+    }
+    #inactiveMask.hidden { display: none; }
+
+    .small-note {
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .csv-panel {
+      display: none;
+      margin-top: 14px;
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #fafbfc;
+    }
+    .csv-panel.visible { display: block; }
+    .csv-panel-header {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    .csv-panel textarea {
+      width: 100%;
+      min-height: 180px;
+      resize: vertical;
+      border: 1px solid #c8d0d8;
+      border-radius: 8px;
+      padding: 10px;
+      background: #fff;
+      color: #26313b;
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+      font-size: 0.82rem;
+      line-height: 1.4;
+      white-space: pre;
+    }
+
+    .placeholder-label {
+      display: inline-block;
+      margin-bottom: 10px;
+      padding: 3px 8px;
+      border: 1px solid #b89631;
+      border-radius: 999px;
+      background: #fff9df;
+      color: #665016;
+      font-size: 0.8rem;
+      font-weight: 800;
+      letter-spacing: 0.03em;
+    }
+
+    .plot-wrap { position: relative; margin-top: 14px; padding-left: 58px; }
+    .plot-placeholder {
+      position: relative;
+      height: 330px;
+      border-left: 2px solid #303942;
+      border-bottom: 2px solid #303942;
+      background:
+        linear-gradient(to right, transparent 24%, #edf0f3 24%, #edf0f3 24.5%, transparent 24.5%),
+        linear-gradient(to right, transparent 49%, #edf0f3 49%, #edf0f3 49.5%, transparent 49.5%),
+        linear-gradient(to right, transparent 74%, #edf0f3 74%, #edf0f3 74.5%, transparent 74.5%),
+        linear-gradient(to bottom, transparent 24%, #edf0f3 24%, #edf0f3 24.5%, transparent 24.5%),
+        linear-gradient(to bottom, transparent 49%, #edf0f3 49%, #edf0f3 49.5%, transparent 49.5%),
+        linear-gradient(to bottom, transparent 74%, #edf0f3 74%, #edf0f3 74.5%, transparent 74.5%);
+    }
+    .plot-message {
+      position: absolute;
+      inset: 28% 12%;
+      display: grid;
+      place-items: center;
+      padding: 18px;
+      border: 2px dashed #9da7b1;
+      border-radius: 10px;
+      background: rgba(255,255,255,0.93);
+      color: #59636d;
+      text-align: center;
+      font-weight: 760;
+    }
+    .x-label { margin-top: 8px; text-align: center; font-weight: 700; }
+    .y-label {
+      position: absolute;
+      left: -70px;
+      top: 50%;
+      width: 120px;
+      transform: rotate(-90deg) translateY(-50%);
+      transform-origin: center;
+      text-align: center;
+      font-weight: 700;
+    }
+
+    #recordingFrame {
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      border: 0;
+      border-radius: 10px;
+    }
+
+    
+    .results-figure {
+      max-width: 760px;
+      margin: 18px auto 0;
+    }
+
+    .results-figure svg {
+      display: block;
+      width: 100%;
+      height: auto;
+      background: #fff;
+    }
+
+    .figure-caption {
+      margin-top: 10px;
+      color: #66717d;
+      font-size: 0.92rem;
+      text-align: center;
+    }
+
+
+    .results-table caption {
+      caption-side: top;
+      text-align: left;
+      padding: 0 0 8px;
+      color: var(--muted);
+      font-size: 0.9rem;
+      font-weight: 650;
+    }
+
+    .equation-box {
+      margin: 12px 0;
+      padding: 10px 12px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: var(--soft);
+    }
+
+    .equation-box p:last-child {
+      margin-bottom: 0;
+    }
+
+.references { padding-left: 0; list-style: none; }
+    .references li {
+      margin: 0 0 12px 0;
+      padding-left: 2em;
+      text-indent: -2em;
+      color: #38434e;
+    }
+    .references a { color: var(--accent-dark); overflow-wrap: anywhere; }
+
+    @media (max-width: 1119px) {
+      .top-grid { grid-template-columns: 1fr; }
+      .toolbar { grid-template-columns: 1fr 1fr; }
+      #statusText { grid-column: 1 / -1; text-align: left; }
+    }
+    @media (max-width: 760px) {
+      .design-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header>
+      <h1>Fitts' Law: Break-Reminder Selection</h1>
+      <p class="author-line">Nguyen Hong Chau Linh | 114078891</p>
+      <p class="lede">
+        This assignment applies Fitts’ Law to a break-support interface for laptop work. The experiment tests how the distance and width of a “Break” target affect pointing time. It does not test whether users actually take more breaks or reduce sitting.
+      </p>
+    </header>
+
+    <div class="report-grid">
+      <section class="report-section" id="scenario">
+        <h2>1. Scenario</h2>
+        <p>
+          Students and knowledge workers often spend extended periods reading, writing, analyzing information, and editing documents on laptops. During these working episodes, short breaks or micro-breaks may provide opportunities to recover from sustained effort and support well-being and performance (Lyubykh et al., 2022; Nie et al., 2023).
+        </p>
+        <p>
+          This assignment focuses on one small part of a break-support system: selecting the break action once it is available. Participants work in a simulated document interface where the destination is a single <strong>“Break”</strong> action.
+        </p>
+        <p>
+          The experiment evaluates pointing performance only. It does not show that a particular design makes people notice reminders more often, take more breaks, reduce sitting, or recover better.
+        </p>
+      </section>
+
+      <section class="report-section" id="innovation-application">
+        <h2>2. Innovation &amp; Application</h2>
+        <h3>Innovation</h3>
+        <p>
+          Instead of using abstract targets alone, the pointing task is embedded in a familiar document-work context. The fixed <strong>“Continue working”</strong> control establishes a standardized pointer location, while the <strong>“Break”</strong> button is the actual interface target that changes position and width between trials.
+        </p>
+        <p>
+          Minimal notification chrome is retained around “Break” to preserve the desktop-notification framing, but no heading, description, icon, countdown, or secondary action is shown. The short label also remains on one line across all three target widths, reducing text wrapping as a possible source of variation.
+        </p>
+
+        <h3>Application</h3>
+        <p>
+          The findings can inform the placement and size of break-support actions when the design goal is to make them easier to acquire with a pointer. A shorter movement distance or wider target should reduce pointing difficulty under Fitts’ Law, but this should be interpreted as an interaction-efficiency result rather than evidence of better break compliance.
+        </p>
+
+        <div class="design-grid">
+          <div class="design-card combined-design">
+            <div class="design-item">
+              <strong>Design intention</strong>
+              <span>Isolate the motor cost of reaching the break action while preserving a recognizable laptop-work context.</span>
+            </div>
+            <div class="design-item">
+              <strong>Control strategy</strong>
+              <span>Keep wording, color, button height, movement direction, document content, and starting location constant; vary only target distance and width.</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="report-section" id="formula">
+        <h2>3. Fitts’ Law Formula</h2>
+        <span class="placeholder-label">SHANNON FORMULATION OF FITTS’ LAW</span>
+        <div class="formula-box">
+          <div class="formula-main" aria-label="T equals a plus b log base 2 of A over W plus 1">
+            <em>T</em> = <em>a</em> + <em>b</em> log<sub>2</sub>
+            <span class="formula-paren">(</span>
+            <span class="math-fraction" aria-hidden="true">
+              <span class="numerator"><em>A</em></span>
+              <span class="denominator"><em>W</em></span>
+            </span>
+            <span class="formula-plus">+ 1</span>
+            <span class="formula-paren">)</span>
+          </div>
+
+          <div class="formula-legend">
+            <div class="formula-symbol">T</div>
+            <div>Movement time: the time from pressing “Continue working” until successfully pressing “Break.”</div>
+            <div class="formula-symbol">a</div>
+            <div>Regression intercept: the estimated baseline time when Index of Difficulty approaches zero.</div>
+            <div class="formula-symbol">b</div>
+            <div>Regression slope: the estimated increase in movement time for each additional bit of task difficulty.</div>
+            <div class="formula-symbol">A</div>
+            <div>Movement amplitude: the actual distance from the recorded starting pointer coordinates to the center of “Break.”</div>
+            <div class="formula-symbol">W</div>
+            <div>Target width in the direction of movement: the rendered horizontal width of “Break.”</div>
+            <div class="formula-symbol">log<sub>2</sub>(<em>A</em>/<em>W</em> + 1)</div>
+            <div>Index of Difficulty (ID), measured in bits. A farther target and/or a smaller target produces a larger ID.</div>
+          </div>
+        </div>
+        <p class="small-note">
+          Fitts (1954) introduced the original speed–accuracy relationship. The form <em>log<sub>2</sub>(A/W + 1)</em> is commonly called the <strong>Shannon formulation</strong> in HCI; MacKenzie (1992) is cited here for its use and treatment in Fitts’ Law research.
+        </p>
+      </section>
+
+      <section class="report-section" id="method">
+        <h2>4. Method &amp; Experimental Design</h2>
+        <p>
+          The experiment manipulates the two variables central to Fitts’ Law: movement amplitude and target width. “Continue working” serves only as the standardized starting target for the pointing task; it is not treated as a behavioral choice between continuing work and taking a break.
+        </p>
+
+        <table class="method-table">
+          <thead>
+            <tr>
+              <th>Design element</th>
+              <th>Levels / rule</th>
+              <th>Justification</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Nominal distance</td>
+              <td>250, 450, 650 CSS px</td>
+              <td>Creates near, medium, and far placements of the “Break” target while keeping all targets fully visible.</td>
+            </tr>
+            <tr>
+              <td>Target width</td>
+              <td>80, 130, 180 CSS px</td>
+              <td>Provides three visually distinctive small, medium, and large button widths while remaining plausible for a desktop action.</td>
+            </tr>
+            <tr>
+              <td>Target height</td>
+              <td>48 CSS px, fixed</td>
+              <td>Keeps the vertical hit area constant so the main size manipulation is horizontal width, matching the horizontal movement direction.</td>
+            </tr>
+            <tr>
+              <td>Conditions</td>
+              <td>3 distances × 3 widths = 9</td>
+              <td>Produces a useful range of Index of Difficulty values from relatively easy to relatively difficult conditions.</td>
+            </tr>
+            <tr>
+              <td>Repetitions</td>
+              <td>6 per condition = 54 main trials</td>
+              <td>Repeated measurements reduce the influence of random trial-to-trial motor variability.</td>
+            </tr>
+            <tr>
+              <td>Practice</td>
+              <td>3 trials</td>
+              <td>Lets participants learn the interaction before main data collection; practice is kept separate from the experimental dataset.</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h3>Trial procedure</h3>
+        <p>
+          “Continue working” and “Break” are both visible before the trial begins. Timing starts on <code>pointerdown</code> at “Continue working” and ends on a successful <code>pointerdown</code> inside “Break.” Timing uses <code>performance.now()</code>.
+        </p>
+        <p>
+          The experiment records actual movement amplitude from the participant’s starting click coordinates to the rendered target center, and records the rendered target width rather than assuming the nominal value. Misses are counted while timing continues until a successful selection.
+        </p>
+        <p>
+          Main trials are randomized. If the page loses visibility or the browser is resized during an active trial, that attempt is recorded as interrupted and the same logical trial is repeated rather than silently discarded.
+        </p>
+
+        <p>
+          I chose these three distance and width levels to create a clear range of pointing difficulty while keeping every target visible in the laptop-sized interface. These values are not Fitts’ Law constants; they are design choices for this experiment so that I can compare easier and harder target selections without scaling or scrolling.
+        </p>
+      </section>
+    </div>
+
+    <section class="experiment-card" aria-labelledby="experimentTitle">
+      <h2 id="experimentTitle">5. Run Experiment</h2>
+
+      <div class="top-grid">
+        <div class="panel">
+          <strong>Instructions</strong>
+          <ol>
+            <li>Use one input device throughout the run (mouse or trackpad).</li>
+            <li>For each trial, first press “Continue working”.</li>
+            <li>Then press “Break” as quickly and accurately as possible.</li>
+            <li>Misses are counted, but timing continues until “Break” is selected successfully.</li>
+            <li>You will complete 3 practice trials followed by 54 randomized experimental trials.</li>
+          </ol>
+        </div>
+
+        <div class="panel progress" aria-live="polite">
+          <div class="progress-row">
+            <span class="progress-label">Run</span>
+            <strong id="runText">1</strong>
+          </div>
+          <div class="progress-row">
+            <span class="progress-label">Phase</span>
+            <strong id="phaseText">Not started</strong>
+          </div>
+          <div class="progress-row">
+            <span class="progress-label">Practice</span>
+            <strong id="practiceProgress">0 / 3</strong>
+          </div>
+          <div class="progress-row">
+            <span class="progress-label">Experiment</span>
+            <strong id="experimentProgress">0 / 54</strong>
+          </div>
+          <div class="progress-row">
+            <span class="progress-label">Recorded attempts</span>
+            <strong id="recordCount">0</strong>
+          </div>
+        </div>
+      </div>
+
+      <div id="sizeWarning" role="alert">
+        This browser window is too small for the fixed-size experiment. Enlarge it to at least 1120 × 720 CSS pixels before starting. The experimental workspace will not be scaled.
+      </div>
+
+      <div class="toolbar">
+        <button id="startPracticeBtn" class="control" type="button">Start practice</button>
+        <button id="startExperimentBtn" class="control" type="button" disabled>Start experiment</button>
+        <button id="newRunBtn" class="control secondary" type="button" disabled>New run</button>
+        <button id="downloadSummaryBtn" class="control secondary" type="button">Download summary CSV</button>
+        <button id="downloadRawBtn" class="control secondary" type="button">Download raw CSV</button>
+        <span id="statusText">Ready when you are.</span>
+      </div>
+
+      <div id="csvPanel" class="csv-panel">
+        <div class="csv-panel-header">
+          <strong id="csvPreviewTitle">CSV preview</strong>
+          <button id="copyCsvBtn" class="control secondary" type="button">Copy CSV</button>
+        </div>
+        <p class="small-note" style="margin-top:0;">
+          If your browser preview blocks the file download, copy the CSV below and save it as a <code>.csv</code> file.
+        </p>
+        <textarea id="csvPreview" readonly spellcheck="false"></textarea>
+      </div>
+
+      <div class="stage-shell">
+        <div id="taskStage" aria-label="Simulated laptop document workspace">
+          <div class="app-bar" aria-hidden="true">
+            <span class="app-dot"></span>
+            <span class="app-dot"></span>
+            <span class="app-dot"></span>
+            <span class="doc-name">Research notes — draft</span>
+          </div>
+
+          <div class="document" aria-hidden="true">
+            <div class="doc-heading">Literature Review</div>
+            <div class="fake-line w92"></div>
+            <div class="fake-line w84"></div>
+            <div class="fake-line w76"></div>
+            <div class="fake-line w92"></div>
+            <div class="fake-line w68"></div>
+            <div class="doc-note">
+              <div class="fake-line w84"></div>
+              <div class="fake-line w57"></div>
+            </div>
+          </div>
+
+          <button id="startTarget" type="button" aria-label="Continue working starting target">Continue working</button>
+
+          <div id="reminderShell" aria-label="Break action">
+            <button id="breakTarget" type="button">Break</button>
+          </div>
+
+          <div id="inactiveMask">Start the practice block to begin.</div>
+        </div>
+      </div>
+
+      <p class="small-note">
+        The start target stays fixed. Between trials, the “Break” target moves to one of three controlled horizontal distances and changes to one of three widths. No target moves or changes during a timed movement.
+      </p>
+    </section>
+
+    <div class="report-grid">
+      
+<section class="report-section" id="results">
+  <h2>6. Results</h2>
+  <p>
+    Table 1 presents the nine condition-level averages used in the analysis. Average movement time generally increased as Index of Difficulty increased. A linear regression fitted to the nine condition means produced <strong>T = 496.31 + 156.28 × ID</strong>, with <strong>R² = 0.693</strong>.
+  </p>
+
+  <h3>Condition summary</h3>
+  <table class="method-table results-table">
+    <caption>Table 1. Condition-level averages used in the Fitts’ Law regression.</caption>
+    <thead>
+      <tr>
+        <th>Condition</th>
+        <th>A (px)</th>
+        <th>W (px)</th>
+        <th>ID (bits)</th>
+        <th>MT (ms)</th>
+      </tr>
+    </thead>
+    <tbody>
+            <tr>
+              <td>1</td>
+              <td>251.51</td>
+              <td>80</td>
+              <td>2.05</td>
+              <td>905.9</td>
+            </tr>
+            <tr>
+              <td>2</td>
+              <td>246.96</td>
+              <td>130</td>
+              <td>1.54</td>
+              <td>736.0</td>
+            </tr>
+            <tr>
+              <td>3</td>
+              <td>242.68</td>
+              <td>180</td>
+              <td>1.23</td>
+              <td>650.1</td>
+            </tr>
+            <tr>
+              <td>4</td>
+              <td>438.51</td>
+              <td>80</td>
+              <td>2.69</td>
+              <td>894.7</td>
+            </tr>
+            <tr>
+              <td>5</td>
+              <td>446.70</td>
+              <td>130</td>
+              <td>2.15</td>
+              <td>779.7</td>
+            </tr>
+            <tr>
+              <td>6</td>
+              <td>435.67</td>
+              <td>180</td>
+              <td>1.77</td>
+              <td>724.6</td>
+            </tr>
+            <tr>
+              <td>7</td>
+              <td>638.36</td>
+              <td>80</td>
+              <td>3.17</td>
+              <td>921.5</td>
+            </tr>
+            <tr>
+              <td>8</td>
+              <td>632.83</td>
+              <td>130</td>
+              <td>2.55</td>
+              <td>986.2</td>
+            </tr>
+            <tr>
+              <td>9</td>
+              <td>638.26</td>
+              <td>180</td>
+              <td>2.18</td>
+              <td>889.0</td>
+            </tr>
+    </tbody>
+  </table>
+
+  <div class="equation-box">
+    <p><strong>Empirical regression form:</strong> T = 496.31 + 156.28 × ID</p>
+    <p><strong>Equivalent Fitts’ Law form:</strong> T = 496.31 + 156.28 × log<sub>2</sub>(A/W + 1)</p>
+  </div>
+
+  <h3>Interpretation of the parameters</h3>
+  <p>
+    The intercept, <strong>a = 496.31 ms</strong>, represents the predicted movement time when the Index of Difficulty is zero. Because zero difficulty is outside the observed range, this value should be interpreted as an extrapolated model baseline rather than a direct measurement of reaction time.
+  </p>
+  <p>
+    The slope, <strong>b = 156.28 ms/bit</strong>, indicates that each additional bit of difficulty was associated with an estimated 156.28 ms increase in average movement time. This slope is steeper than the <strong>90.47 ms/bit</strong> obtained in Part I. The difference may reflect the different target ranges and contextual interface used in this task, as well as normal within-user variation such as practice, fatigue, or changes in speed–accuracy strategy. These are possible explanations only because they were not directly tested.
+  </p>
+  <p>
+    The model’s <strong>R² = 0.693</strong> means that Index of Difficulty explained approximately 69.3% of the variation in the nine condition-average movement times.
+  </p>
+
+  <div class="results-figure">
+    <svg xmlns='http://www.w3.org/2000/svg' xmlns:xlink='http://www.w3.org/1999/xlink' width='446.40pt' height='316.80pt' viewBox='0 0 446.40 316.80'>
+<g class='svglite'>
+<defs>
+  <style type='text/css'><![CDATA[
+    .svglite line, .svglite polyline, .svglite polygon, .svglite path, .svglite rect, .svglite circle {
+      fill: none;
+      stroke: #000000;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      stroke-miterlimit: 10.00;
+    }
+    .svglite text {
+      white-space: pre;
+    }
+    .svglite g.glyphgroup path {
+      fill: inherit;
+      stroke: none;
+    }
+  ]]></style>
+</defs>
+<rect width='100%' height='100%' style='stroke: none; fill: #FFFFFF;'/>
+<defs>
+  <clipPath id='cpMC4wMHw0NDYuNDB8MC4wMHwzMTYuODA='>
+    <rect x='0.00' y='0.00' width='446.40' height='316.80' />
+  </clipPath>
+</defs>
+<g clip-path='url(#cpMC4wMHw0NDYuNDB8MC4wMHwzMTYuODA=)'>
+<rect x='0.00' y='-0.00000000000011' width='446.40' height='316.80' style='stroke-width: 1.07; stroke: #FFFFFF; fill: #FFFFFF;' />
+</g>
+<defs>
+  <clipPath id='cpNDIuODR8NDQwLjkyfDM3LjQxfDI4NS43Mg=='>
+    <rect x='42.84' y='37.41' width='398.08' height='248.31' />
+  </clipPath>
+</defs>
+<g clip-path='url(#cpNDIuODR8NDQwLjkyfDM3LjQxfDI4NS43Mg==)'>
+<rect x='42.84' y='37.41' width='398.08' height='248.31' style='stroke-width: 1.07; stroke: none; fill: #FFFFFF;' />
+<circle cx='213.90' cy='105.41' r='3.34' style='stroke-width: 0.71; fill: #000000;' />
+<circle cx='118.76' cy='217.67' r='3.34' style='stroke-width: 0.71; fill: #000000;' />
+<circle cx='60.94' cy='274.43' r='3.34' style='stroke-width: 0.71; fill: #000000;' />
+<circle cx='333.29' cy='112.81' r='3.34' style='stroke-width: 0.71; fill: #000000;' />
+<circle cx='232.55' cy='188.80' r='3.34' style='stroke-width: 0.71; fill: #000000;' />
+<circle cx='161.67' cy='225.21' r='3.34' style='stroke-width: 0.71; fill: #000000;' />
+<circle cx='422.83' cy='95.10' r='3.34' style='stroke-width: 0.71; fill: #000000;' />
+<circle cx='307.17' cy='52.35' r='3.34' style='stroke-width: 0.71; fill: #000000;' />
+<circle cx='238.15' cy='116.58' r='3.34' style='stroke-width: 0.71; fill: #000000;' />
+<polyline points='60.94,249.04 65.52,246.50 70.10,243.96 74.68,241.43 79.26,238.89 83.84,236.36 88.42,233.82 93.00,231.29 97.58,228.75 102.16,226.21 106.74,223.68 111.33,221.14 115.91,218.61 120.49,216.07 125.07,213.53 129.65,211.00 134.23,208.46 138.81,205.93 143.39,203.39 147.97,200.85 152.55,198.32 157.13,195.78 161.72,193.25 166.30,190.71 170.88,188.17 175.46,185.64 180.04,183.10 184.62,180.57 189.20,178.03 193.78,175.50 198.36,172.96 202.94,170.42 207.52,167.89 212.11,165.35 216.69,162.82 221.27,160.28 225.85,157.74 230.43,155.21 235.01,152.67 239.59,150.14 244.17,147.60 248.75,145.06 253.33,142.53 257.91,139.99 262.50,137.46 267.08,134.92 271.66,132.38 276.24,129.85 280.82,127.31 285.40,124.78 289.98,122.24 294.56,119.71 299.14,117.17 303.72,114.63 308.30,112.10 312.88,109.56 317.47,107.03 322.05,104.49 326.63,101.95 331.21,99.42 335.79,96.88 340.37,94.35 344.95,91.81 349.53,89.27 354.11,86.74 358.69,84.20 363.27,81.67 367.86,79.13 372.44,76.60 377.02,74.06 381.60,71.52 386.18,68.99 390.76,66.45 395.34,63.92 399.92,61.38 404.50,58.84 409.08,56.31 413.66,53.77 418.25,51.24 422.83,48.70 ' style='stroke-width: 1.71; stroke-linecap: butt;' />
+</g>
+<g clip-path='url(#cpMC4wMHw0NDYuNDB8MC4wMHwzMTYuODA=)'>
+<polyline points='42.84,285.72 42.84,37.41 ' style='stroke-width: 1.07; stroke-linecap: square;' />
+<text x='37.91' y='244.61' text-anchor='end' style='font-size: 8.80px; font-family: "Arial";' textLength='14.67px' lengthAdjust='spacingAndGlyphs'>700</text>
+<text x='37.91' y='178.53' text-anchor='end' style='font-size: 8.80px; font-family: "Arial";' textLength='14.67px' lengthAdjust='spacingAndGlyphs'>800</text>
+<text x='37.91' y='112.46' text-anchor='end' style='font-size: 8.80px; font-family: "Arial";' textLength='14.67px' lengthAdjust='spacingAndGlyphs'>900</text>
+<text x='37.91' y='46.38' text-anchor='end' style='font-size: 8.80px; font-family: "Arial";' textLength='19.56px' lengthAdjust='spacingAndGlyphs'>1000</text>
+<polyline points='40.10,241.46 42.84,241.46 ' style='stroke-width: 1.07; stroke-linecap: butt;' />
+<polyline points='40.10,175.38 42.84,175.38 ' style='stroke-width: 1.07; stroke-linecap: butt;' />
+<polyline points='40.10,109.31 42.84,109.31 ' style='stroke-width: 1.07; stroke-linecap: butt;' />
+<polyline points='40.10,43.23 42.84,43.23 ' style='stroke-width: 1.07; stroke-linecap: butt;' />
+<polyline points='42.84,285.72 440.92,285.72 ' style='stroke-width: 1.07; stroke-linecap: square;' />
+<polyline points='111.30,288.46 111.30,285.72 ' style='stroke-width: 1.07; stroke-linecap: butt;' />
+<polyline points='204.57,288.46 204.57,285.72 ' style='stroke-width: 1.07; stroke-linecap: butt;' />
+<polyline points='297.84,288.46 297.84,285.72 ' style='stroke-width: 1.07; stroke-linecap: butt;' />
+<polyline points='391.11,288.46 391.11,285.72 ' style='stroke-width: 1.07; stroke-linecap: butt;' />
+<text x='111.30' y='296.95' text-anchor='middle' style='font-size: 8.80px; font-family: "Arial";' textLength='12.22px' lengthAdjust='spacingAndGlyphs'>1.5</text>
+<text x='204.57' y='296.95' text-anchor='middle' style='font-size: 8.80px; font-family: "Arial";' textLength='12.22px' lengthAdjust='spacingAndGlyphs'>2.0</text>
+<text x='297.84' y='296.95' text-anchor='middle' style='font-size: 8.80px; font-family: "Arial";' textLength='12.22px' lengthAdjust='spacingAndGlyphs'>2.5</text>
+<text x='391.11' y='296.95' text-anchor='middle' style='font-size: 8.80px; font-family: "Arial";' textLength='12.22px' lengthAdjust='spacingAndGlyphs'>3.0</text>
+<text x='241.88' y='309.07' text-anchor='middle' style='font-size: 11.00px; font-family: "Arial";' textLength='111.11px' lengthAdjust='spacingAndGlyphs'>Index of Difficulty (bits)</text>
+<text transform='translate(13.36,161.57) rotate(-90)' text-anchor='middle' style='font-size: 11.00px; font-family: "Arial";' textLength='147.16px' lengthAdjust='spacingAndGlyphs'>Average Movement Time (ms)</text>
+<text x='42.84' y='29.68' style='font-size: 11.00px; font-family: "Arial";' textLength='180.36px' lengthAdjust='spacingAndGlyphs'>T = 496.31 + 156.28 × ID; R² = 0.693</text>
+<text x='42.84' y='14.08' style='font-size: 12.00px; font-weight: bold; font-family: "Arial";' textLength='208.66px' lengthAdjust='spacingAndGlyphs'>Fitts’ Law for Break-Action Selection</text>
+</g>
+</g>
+</svg>
+    <p class="figure-caption">
+      Figure 1. Average movement time as a function of index of difficulty across the nine experimental conditions. The line shows the fitted linear regression.
+    </p>
+  </div>
+
+  <p>
+    Overall, the results follow the expected direction of Fitts’ Law: more difficult targets generally required longer movement times. However, the data come from one run of one user, so the fitted model should be interpreted within this limited context.
+  </p>
+</section>
+
+
+      <section class="report-section" id="limitations">
+        <h2>7. Limitations</h2>
+        <p>
+          The experiment isolates pointing performance in a simplified document-work scenario. A fixed starting location, one horizontal movement direction, and controlled target placements improve experimental consistency but do not reproduce the full variability of real knowledge work.
+        </p>
+        <p>
+          Another point I was thinking about is where the break button should appear on the screen. In this experiment, I only changed its horizontal distance from the starting point, mainly to keep the Fitts’ Law task simple and controlled. However, in a real interface, a break button may appear closer to the current work area, at the side of the screen, or in a corner. These positions may also affect how easy the button is to reach because they involve different movement directions and screen boundaries. I think this could be explored in future work as another design factor, while keeping target size and distance controlled.
+        </p>
+        <p>
+          The minimal notification shell is intentionally simplified. Real break-support systems may include more text, icons, timing logic, or a more stable notification location, while actual pointer positions, task urgency, attention, and notification timing vary naturally.
+        </p>
+        <p>
+          Therefore, the results should support claims about <strong>target acquisition efficiency</strong> only. Questions about real break-taking patterns, recovery, sitting reduction, or long-term reminder effectiveness require additional behavioral or field-based measures.
+        </p>
+      </section>
+
+      <section class="report-section" id="recording">
+        <h2>8. Experiment Recording</h2>
+        <p>
+          The experiment recording is embedded below. If the embedded player is unavailable, 
+          <a href="https://drive.google.com/file/d/19h6p_oCggeg6cdaJF3-apMiueEFJYq-x/view?usp=drive_link" target="_blank" rel="noopener noreferrer">open the recording in Google Drive</a>.
+        </p>
+
+        <iframe
+          id="recordingFrame"
+          title="Experiment screen recording"
+          src="https://drive.google.com/file/d/19h6p_oCggeg6cdaJF3-apMiueEFJYq-x/preview"
+          allow="autoplay; encrypted-media; picture-in-picture"
+          allowfullscreen>
+        </iframe>
+      </section>
+
+      <section class="report-section" id="references">
+        <h2>9. References</h2>
+        <ul class="references">
+          <li>
+            Fitts, P. M. (1954). The information capacity of the human motor system in controlling the amplitude of movement.
+            <em>Journal of Experimental Psychology, 47</em>(6), 381–391.
+            <a href="https://doi.org/10.1037/h0055392" target="_blank" rel="noopener noreferrer">https://doi.org/10.1037/h0055392</a>
+          </li>
+          <li>
+            Lyubykh, Z., Gulseren, D., Premji, Z., Wingate, T. G., Deng, C., Bélanger, L. J., &amp; Turner, N. (2022).
+            Role of work breaks in well-being and performance: A systematic review and future research agenda.
+            <em>Journal of Occupational Health Psychology, 27</em>(5), 470–487.
+            <a href="https://doi.org/10.1037/ocp0000337" target="_blank" rel="noopener noreferrer">https://doi.org/10.1037/ocp0000337</a>
+          </li>
+          <li>
+            MacKenzie, I. S. (1992). Fitts' law as a research and design tool in human-computer interaction.
+            <em>Human–Computer Interaction, 7</em>(1), 91–139.
+            <a href="https://doi.org/10.1207/s15327051hci0701_3" target="_blank" rel="noopener noreferrer">https://doi.org/10.1207/s15327051hci0701_3</a>
+          </li>
+          <li>
+            Nie, Q., Zhang, J., Peng, J., &amp; Chen, X. (2023).
+            Daily micro-break activities and workplace well-being: A recovery perspective.
+            <em>Current Psychology, 42</em>(12), 9972–9985.
+            <a href="https://doi.org/10.1007/s12144-021-02300-7" target="_blank" rel="noopener noreferrer">https://doi.org/10.1007/s12144-021-02300-7</a>
+          </li>
+        </ul>
+      </section>
+    </div>
+  </main>
+
+  <script>
+    (() => {
+      "use strict";
+
+      const WIDTHS = [80, 130, 180];
+      const DISTANCES = [250, 450, 650];
+      const REPETITIONS = 6;
+      const PRACTICE_COUNT = 3;
+
+      const TARGET_HEIGHT = 48;
+      const START_CENTER_X = 200;
+      const MOVEMENT_CENTER_Y = 210;
+      const REMINDER_WIDTH = 220;
+      const REMINDER_HEIGHT = 74;
+
+      const MIN_VIEWPORT_WIDTH = 1120;
+      const MIN_VIEWPORT_HEIGHT = 720;
+      const CONFIRMATION_MS = 350;
+
+      const taskStage = document.getElementById("taskStage");
+      const startTarget = document.getElementById("startTarget");
+      const breakTarget = document.getElementById("breakTarget");
+      const reminderShell = document.getElementById("reminderShell");
+      const inactiveMask = document.getElementById("inactiveMask");
+
+      const startPracticeBtn = document.getElementById("startPracticeBtn");
+      const startExperimentBtn = document.getElementById("startExperimentBtn");
+      const newRunBtn = document.getElementById("newRunBtn");
+      const downloadSummaryBtn = document.getElementById("downloadSummaryBtn");
+      const downloadRawBtn = document.getElementById("downloadRawBtn");
+
+      const csvPanel = document.getElementById("csvPanel");
+      const csvPreview = document.getElementById("csvPreview");
+      const csvPreviewTitle = document.getElementById("csvPreviewTitle");
+      const copyCsvBtn = document.getElementById("copyCsvBtn");
+
+      const runText = document.getElementById("runText");
+      const phaseText = document.getElementById("phaseText");
+      const practiceProgress = document.getElementById("practiceProgress");
+      const experimentProgress = document.getElementById("experimentProgress");
+      const recordCount = document.getElementById("recordCount");
+      const statusText = document.getElementById("statusText");
+      const sizeWarning = document.getElementById("sizeWarning");
+
+      let runId = 1;
+      let phase = "idle";
+      let practiceTrials = [];
+      let experimentalTrials = [];
+      let currentIndex = 0;
+      let currentTrial = null;
+
+      let timedTrialActive = false;
+      let startTime = null;
+      let startPoint = null;
+      let trialMisses = 0;
+      let currentAttempt = 0;
+      let frozenTargetGeometry = null;
+
+      let pendingRepeatMessage = "";
+      let records = [];
+
+      const DESTINATION_CENTER_X_BY_DISTANCE = {
+        250: START_CENTER_X + 250,
+        450: START_CENTER_X + 450,
+        650: START_CENTER_X + 650
+      };
+
+      function shuffle(array) {
+        const copy = array.slice();
+        for (let i = copy.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [copy[i], copy[j]] = [copy[j], copy[i]];
+        }
+        return copy;
+      }
+
+      function buildPracticeTrials() {
+        const conditions = [
+          { nominalDistance: 250, width: 130 },
+          { nominalDistance: 450, width: 180 },
+          { nominalDistance: 650, width: 80 }
+        ];
+
+        return conditions.map((condition, i) => ({
+          run_id: runId,
+          phase: "practice",
+          trial: `P${i + 1}`,
+          repetition: 0,
+          nominalDistance: condition.nominalDistance,
+          width: condition.width,
+          attempts: 0
+        }));
+      }
+
+      function buildExperimentalTrials() {
+        const trials = [];
+        for (const distance of DISTANCES) {
+          for (const width of WIDTHS) {
+            for (let repetition = 1; repetition <= REPETITIONS; repetition++) {
+              trials.push({
+                run_id: runId,
+                phase: "experiment",
+                repetition,
+                nominalDistance: distance,
+                width,
+                attempts: 0
+              });
+            }
+          }
+        }
+
+        return shuffle(trials).map((trial, i) => ({
+          ...trial,
+          trial: `E${String(i + 1).padStart(2, "0")}`
+        }));
+      }
+
+      function viewportIsLargeEnough() {
+        return (
+          window.innerWidth >= MIN_VIEWPORT_WIDTH &&
+          window.innerHeight >= MIN_VIEWPORT_HEIGHT
+        );
+      }
+
+      function updateViewportGate() {
+        const okay = viewportIsLargeEnough();
+        sizeWarning.classList.toggle("visible", !okay);
+
+        if (phase === "idle") startPracticeBtn.disabled = !okay;
+        if (phase === "practiceComplete") startExperimentBtn.disabled = !okay;
+
+        if (!okay && !timedTrialActive && currentTrial && phase !== "done") {
+          inactiveMask.classList.remove("hidden");
+          inactiveMask.textContent = "Enlarge the browser window before continuing.";
+        } else if (okay && currentTrial && phase !== "done") {
+          inactiveMask.classList.add("hidden");
+        }
+
+        return okay;
+      }
+
+      function layoutCurrentTrial() {
+        if (!currentTrial) return;
+
+        startTarget.style.left = `${START_CENTER_X - 75}px`;
+        startTarget.style.top = `${MOVEMENT_CENTER_Y - 20}px`;
+
+        const destinationCenterX =
+          DESTINATION_CENTER_X_BY_DISTANCE[currentTrial.nominalDistance];
+
+        reminderShell.style.left = `${destinationCenterX - REMINDER_WIDTH / 2}px`;
+        reminderShell.style.top = `${MOVEMENT_CENTER_Y - REMINDER_HEIGHT / 2}px`;
+
+        breakTarget.style.width = `${currentTrial.width}px`;
+        breakTarget.style.height = `${TARGET_HEIGHT}px`;
+      }
+
+      function validateGeometry() {
+        const minDestinationCenterX = START_CENTER_X + Math.min(...DISTANCES);
+        const maxDestinationCenterX = START_CENTER_X + Math.max(...DISTANCES);
+
+        if (START_CENTER_X - 75 < 0) {
+          throw new Error("The fixed starting target does not fit inside the experiment stage.");
+        }
+        if (minDestinationCenterX - REMINDER_WIDTH / 2 < 0) {
+          throw new Error("The nearest notification shell does not fit inside the experiment stage.");
+        }
+        if (maxDestinationCenterX + REMINDER_WIDTH / 2 > 1000) {
+          throw new Error("The farthest notification shell does not fit inside the experiment stage.");
+        }
+      }
+
+      function updateProgressUI() {
+        runText.textContent = String(runId);
+
+        phaseText.textContent =
+          phase === "idle" ? "Not started" :
+          phase === "practice" ? "Practice" :
+          phase === "practiceComplete" ? "Practice complete" :
+          phase === "experiment" ? "Experiment" :
+          "Complete";
+
+        const practiceCompleted =
+          phase === "idle" ? 0 :
+          phase === "practice" ? currentIndex :
+          PRACTICE_COUNT;
+
+        const experimentCompleted =
+          phase === "experiment" ? currentIndex :
+          phase === "done" ? experimentalTrials.length :
+          0;
+
+        practiceProgress.textContent = `${practiceCompleted} / ${PRACTICE_COUNT}`;
+        experimentProgress.textContent = `${experimentCompleted} / ${experimentalTrials.length || 54}`;
+        recordCount.textContent = String(records.length);
+        newRunBtn.disabled = phase !== "done";
+      }
+
+      function showTrial() {
+        const list = phase === "practice" ? practiceTrials : experimentalTrials;
+        currentTrial = list[currentIndex];
+        if (!currentTrial) return;
+
+        timedTrialActive = false;
+        startTime = null;
+        startPoint = null;
+        trialMisses = 0;
+        currentAttempt = 0;
+        frozenTargetGeometry = null;
+
+        layoutCurrentTrial();
+
+        if (viewportIsLargeEnough()) {
+          inactiveMask.classList.add("hidden");
+        } else {
+          inactiveMask.classList.remove("hidden");
+          inactiveMask.textContent = "Enlarge the browser window before continuing.";
+        }
+
+        statusText.textContent =
+          pendingRepeatMessage ||
+          "Press “Continue working,” then select “Break.”";
+
+        pendingRepeatMessage = "";
+        updateProgressUI();
+      }
+
+      function finishPractice() {
+        phase = "practiceComplete";
+        currentTrial = null;
+        timedTrialActive = false;
+
+        inactiveMask.classList.remove("hidden");
+        inactiveMask.textContent = "Practice complete. Start the main experiment when ready.";
+
+        statusText.textContent = "Practice complete.";
+        startExperimentBtn.disabled = !viewportIsLargeEnough();
+        updateProgressUI();
+      }
+
+      function finishExperiment() {
+        phase = "done";
+        currentTrial = null;
+        timedTrialActive = false;
+
+        inactiveMask.classList.remove("hidden");
+        inactiveMask.textContent =
+          "Experiment complete. Download your data or start a new run.";
+
+        statusText.textContent = "Experiment complete.";
+        startExperimentBtn.disabled = true;
+        updateProgressUI();
+      }
+
+      function getRenderedTargetGeometry() {
+        const rect = breakTarget.getBoundingClientRect();
+        return {
+          centerX: rect.left + rect.width / 2,
+          centerY: rect.top + rect.height / 2,
+          width: rect.width
+        };
+      }
+
+      function calculateMetrics(endTime) {
+        const target = frozenTargetGeometry || getRenderedTargetGeometry();
+        const dx = target.centerX - startPoint.x;
+        const dy = target.centerY - startPoint.y;
+
+        const actualA = Math.hypot(dx, dy);
+        const actualW = target.width;
+        const idBits = Math.log2(actualA / actualW + 1);
+        const movementTime = endTime - startTime;
+
+        return { actualA, actualW, idBits, movementTime };
+      }
+
+      function recordAttempt({ endTime, interruptionStatus, recordStatus }) {
+        const metrics = calculateMetrics(endTime);
+
+        records.push({
+          run_id: runId,
+          trial: currentTrial.trial,
+          phase: currentTrial.phase,
+          attempt: currentAttempt,
+          repetition: currentTrial.repetition,
+          nominal_distance_px: currentTrial.nominalDistance,
+          A_px: metrics.actualA,
+          W_px: metrics.actualW,
+          ID_bits: metrics.idBits,
+          MT_ms: metrics.movementTime,
+          misses: trialMisses,
+          interruption_status: interruptionStatus,
+          record_status: recordStatus
+        });
+
+        updateProgressUI();
+      }
+
+      function interruptActiveTrial(reason) {
+        if (!timedTrialActive || !currentTrial || !startPoint) return;
+
+        const endTime = performance.now();
+        timedTrialActive = false;
+
+        recordAttempt({
+          endTime,
+          interruptionStatus: reason,
+          recordStatus: "interrupted"
+        });
+
+        pendingRepeatMessage =
+          reason === "visibility_hidden"
+            ? "Interrupted by page visibility change — repeat the same trial."
+            : "Interrupted by window resize — repeat the same trial.";
+
+        startTime = null;
+        startPoint = null;
+        trialMisses = 0;
+        frozenTargetGeometry = null;
+
+        if (document.visibilityState === "visible" && viewportIsLargeEnough()) {
+          showTrial();
+        } else {
+          inactiveMask.classList.remove("hidden");
+          inactiveMask.textContent =
+            document.visibilityState !== "visible"
+              ? "Return to this page to repeat the interrupted trial."
+              : "Enlarge the browser window to repeat the interrupted trial.";
+          statusText.textContent = pendingRepeatMessage;
+        }
+      }
+
+      startTarget.addEventListener("pointerdown", (event) => {
+        if (!currentTrial || !viewportIsLargeEnough()) return;
+
+        event.preventDefault();
+        event.stopPropagation();
+
+        if (timedTrialActive) {
+          trialMisses += 1;
+          return;
+        }
+
+        currentTrial.attempts += 1;
+        currentAttempt = currentTrial.attempts;
+        trialMisses = 0;
+
+        startPoint = { x: event.clientX, y: event.clientY };
+        frozenTargetGeometry = getRenderedTargetGeometry();
+
+        startTime = performance.now();
+        timedTrialActive = true;
+      });
+
+      breakTarget.addEventListener("pointerdown", (event) => {
+        if (!timedTrialActive || !currentTrial) return;
+
+        event.preventDefault();
+        event.stopPropagation();
+
+        const endTime = performance.now();
+        timedTrialActive = false;
+
+        recordAttempt({
+          endTime,
+          interruptionStatus: "none",
+          recordStatus: "completed"
+        });
+
+        statusText.textContent = "Break logged";
+
+        setTimeout(() => {
+          currentIndex += 1;
+
+          if (phase === "practice") {
+            if (currentIndex >= practiceTrials.length) {
+              finishPractice();
+            } else {
+              showTrial();
+            }
+          } else if (phase === "experiment") {
+            if (currentIndex >= experimentalTrials.length) {
+              finishExperiment();
+            } else {
+              showTrial();
+            }
+          }
+        }, CONFIRMATION_MS);
+      });
+
+      taskStage.addEventListener("pointerdown", (event) => {
+        if (!timedTrialActive) return;
+        if (!breakTarget.contains(event.target)) trialMisses += 1;
+      });
+
+      function prepareRun() {
+        practiceTrials = buildPracticeTrials();
+        experimentalTrials = buildExperimentalTrials();
+        currentIndex = 0;
+        phase = "practice";
+
+        startPracticeBtn.disabled = true;
+        startExperimentBtn.disabled = true;
+        newRunBtn.disabled = true;
+
+        showTrial();
+      }
+
+      startPracticeBtn.addEventListener("click", () => {
+        if (!viewportIsLargeEnough()) {
+          updateViewportGate();
+          return;
+        }
+        prepareRun();
+      });
+
+      startExperimentBtn.addEventListener("click", () => {
+        if (phase !== "practiceComplete" || !viewportIsLargeEnough()) return;
+
+        currentIndex = 0;
+        phase = "experiment";
+        startExperimentBtn.disabled = true;
+        showTrial();
+      });
+
+      newRunBtn.addEventListener("click", () => {
+        if (phase !== "done") return;
+
+        runId += 1;
+        phase = "idle";
+        currentTrial = null;
+        currentIndex = 0;
+        practiceTrials = [];
+        experimentalTrials = [];
+
+        inactiveMask.classList.remove("hidden");
+        inactiveMask.textContent = "Start the practice block for the new run.";
+
+        startPracticeBtn.disabled = !viewportIsLargeEnough();
+        startExperimentBtn.disabled = true;
+        newRunBtn.disabled = true;
+
+        statusText.textContent = `Run ${runId} ready. Previous data are preserved.`;
+        updateProgressUI();
+      });
+
+      document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "hidden") {
+          interruptActiveTrial("visibility_hidden");
+          return;
+        }
+
+        updateViewportGate();
+
+        if (!timedTrialActive && currentTrial && viewportIsLargeEnough()) {
+          layoutCurrentTrial();
+          if (pendingRepeatMessage) {
+            showTrial();
+          } else {
+            inactiveMask.classList.add("hidden");
+          }
+        }
+      });
+
+      window.addEventListener("resize", () => {
+        if (timedTrialActive) {
+          interruptActiveTrial("window_resized");
+        }
+
+        updateViewportGate();
+
+        if (!timedTrialActive && currentTrial && viewportIsLargeEnough()) {
+          layoutCurrentTrial();
+        }
+      });
+
+      function csvEscape(value) {
+        const text = String(value);
+        if (/[",\n]/.test(text)) {
+          return `"${text.replace(/"/g, '""')}"`;
+        }
+        return text;
+      }
+
+      function makeCsv(headers, rows) {
+        return [
+          headers.map(csvEscape).join(","),
+          ...rows.map(row => row.map(csvEscape).join(","))
+        ].join("\r\n");
+      }
+
+      function showCsvPreview(title, csv) {
+        csvPreviewTitle.textContent = title;
+        csvPreview.value = csv;
+        csvPanel.classList.add("visible");
+      }
+
+      function downloadCsv(filename, csv) {
+        const blob = new Blob(["﻿", csv], {
+          type: "text/csv;charset=utf-8;"
+        });
+
+        if (window.navigator && typeof window.navigator.msSaveOrOpenBlob === "function") {
+          window.navigator.msSaveOrOpenBlob(blob, filename);
+          return;
+        }
+
+        const url = URL.createObjectURL(blob);
+        const anchor = document.createElement("a");
+
+        anchor.href = url;
+        anchor.download = filename;
+        anchor.style.display = "none";
+        anchor.rel = "noopener";
+
+        document.body.appendChild(anchor);
+        anchor.click();
+        anchor.remove();
+
+        window.setTimeout(() => URL.revokeObjectURL(url), 5000);
+      }
+
+      function buildSummaryRows() {
+        const completed = records.filter(
+          record =>
+            record.phase === "experiment" &&
+            record.record_status === "completed"
+        );
+
+        const rowsOut = [];
+        const runIds = [...new Set(completed.map(record => record.run_id))];
+
+        for (const thisRunId of runIds) {
+          for (const distance of DISTANCES) {
+            for (const width of WIDTHS) {
+              const rows = completed.filter(
+                record =>
+                  record.run_id === thisRunId &&
+                  record.nominal_distance_px === distance &&
+                  Math.round(record.W_px) === width
+              );
+
+              if (rows.length === 0) continue;
+
+              const mean = values =>
+                values.reduce((sum, value) => sum + value, 0) / values.length;
+
+              rowsOut.push([
+                thisRunId,
+                distance,
+                width,
+                mean(rows.map(r => r.A_px)),
+                mean(rows.map(r => r.ID_bits)),
+                mean(rows.map(r => r.MT_ms)),
+                rows.length,
+                mean(rows.map(r => r.misses))
+              ]);
+            }
+          }
+        }
+
+        return rowsOut.map((row, index) => [
+          row[0],
+          index + 1,
+          row[3].toFixed(2),
+          row[2],
+          row[4].toFixed(2),
+          row[5].toFixed(1),
+          row[1],
+          row[6],
+          row[7].toFixed(2)
+        ]);
+      }
+
+      downloadSummaryBtn.addEventListener("click", () => {
+        const rows = buildSummaryRows();
+
+        if (rows.length === 0) {
+          statusText.textContent =
+            "No completed experimental trials yet. Complete at least one main trial first.";
+          return;
+        }
+
+        const headers = [
+          "Run",
+          "Trial",
+          "Average Distance (pixels)",
+          "Width (pixels)",
+          "Index of Difficulty (bits)",
+          "Average Time (milliseconds)",
+          "Nominal Distance (pixels)",
+          "Completed Repetitions",
+          "Average Misses"
+        ];
+
+        const csv = makeCsv(headers, rows);
+        showCsvPreview("Summary CSV preview", csv);
+        downloadCsv("fitts_break_reminder_summary.csv", csv);
+
+        statusText.textContent =
+          "Summary CSV prepared. If the browser blocks the file, use the preview below.";
+      });
+
+      downloadRawBtn.addEventListener("click", () => {
+        if (records.length === 0) {
+          statusText.textContent = "No trial attempts have been recorded yet.";
+          return;
+        }
+
+        const headers = [
+          "Run",
+          "Trial",
+          "Phase",
+          "Attempt",
+          "Repetition",
+          "Nominal Distance (pixels)",
+          "Distance (pixels)",
+          "Width (pixels)",
+          "Index of Difficulty (bits)",
+          "Movement Time (milliseconds)",
+          "Misses",
+          "Interruption Status",
+          "Record Status"
+        ];
+
+        const rows = records.map(record => [
+          record.run_id,
+          record.trial,
+          record.phase,
+          record.attempt,
+          record.repetition,
+          record.nominal_distance_px,
+          record.A_px.toFixed(3),
+          record.W_px.toFixed(3),
+          record.ID_bits.toFixed(6),
+          record.MT_ms.toFixed(3),
+          record.misses,
+          record.interruption_status,
+          record.record_status
+        ]);
+
+        const csv = makeCsv(headers, rows);
+        showCsvPreview("Raw CSV preview", csv);
+        downloadCsv("fitts_break_reminder_raw.csv", csv);
+
+        statusText.textContent =
+          "Raw CSV prepared. If the browser blocks the file, use the preview below.";
+      });
+
+      copyCsvBtn.addEventListener("click", async () => {
+        const text = csvPreview.value;
+
+        if (!text) {
+          statusText.textContent = "There is no CSV content to copy yet.";
+          return;
+        }
+
+        try {
+          if (navigator.clipboard && window.isSecureContext) {
+            await navigator.clipboard.writeText(text);
+          } else {
+            csvPreview.focus();
+            csvPreview.select();
+            document.execCommand("copy");
+            window.getSelection()?.removeAllRanges();
+          }
+
+          statusText.textContent = "CSV copied to clipboard.";
+        } catch (error) {
+          csvPreview.focus();
+          csvPreview.select();
+          statusText.textContent =
+            "Automatic copy was blocked. The CSV text is selected; copy it manually.";
+        }
+      });
+
+      const totalExperimentalTrials =
+        WIDTHS.length * DISTANCES.length * REPETITIONS;
+
+      if (totalExperimentalTrials !== 54) {
+        throw new Error(
+          `Expected 54 experimental trials, found ${totalExperimentalTrials}.`
+        );
+      }
+
+      validateGeometry();
+
+      startTarget.style.left = `${START_CENTER_X - 75}px`;
+      startTarget.style.top = `${MOVEMENT_CENTER_Y - 20}px`;
+
+      reminderShell.style.left =
+        `${START_CENTER_X + DISTANCES[0] - REMINDER_WIDTH / 2}px`;
+      reminderShell.style.top =
+        `${MOVEMENT_CENTER_Y - REMINDER_HEIGHT / 2}px`;
+
+      breakTarget.style.width = `${WIDTHS[1]}px`;
+      breakTarget.style.height = `${TARGET_HEIGHT}px`;
+
+      updateViewportGate();
+      updateProgressUI();
+    })();
+  </script>
+</body>
+</html>
